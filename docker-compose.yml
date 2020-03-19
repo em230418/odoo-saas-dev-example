@@ -1,0 +1,48 @@
+version: '3.2'
+services:
+
+  x-odoo:
+    &default-odoo
+    image: em230418/odoo:13.0
+    build: .
+    ports:
+      - "8069:8069"
+    volumes:
+      - odoo-web-data:/var/lib/odoo
+      - ./config:/etc/odoo
+      - ~/Projects/c13/vendor/it-projects-llc/saas-addons:/mnt/saas-addons
+      - ~/Projects/c13/vendor/OCA/web:/mnt/OCA/web
+      - ~/Projects/c13/vendor/OCA/queue:/mnt/OCA/queue
+    environment:
+      WDB_SOCKET_SERVER: wdb
+      WDB_NO_BROWSER_AUTO_OPEN: 1
+
+  odoo:
+    << : *default-odoo
+    entrypoint: ['/entrypoint.sh']
+    command: ['--dev', 'wdb,reload,qweb,werkzeug,xml']
+    depends_on:
+      - db
+      - proxy
+      - wdb
+
+  db:
+    image: postgres:10
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=odoo
+      - POSTGRES_USER=odoo
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - odoo-db-data:/var/lib/postgresql/data/pgdata
+  proxy:
+    image: envoyproxy/envoy-alpine:v1.10.0
+    ports: ['80:80', '9901:9901']
+    volumes: ['./envoy.yaml:/etc/envoy/envoy.yaml']
+  wdb:
+    image: kozea/wdb
+    ports:
+      - "1984:1984"
+volumes:
+  odoo-web-data:
+  odoo-db-data:
